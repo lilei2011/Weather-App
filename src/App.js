@@ -7,9 +7,10 @@ class App extends Component {
   constructor(props) {
     super(props);
     this.handleSubmit = this.handleSubmit.bind(this);
-    this.handleResponse = this.handleResponse.bind(this);
+    this.handleKeyUp = this.handleKeyUp.bind(this);
     this.formatForecast = this.formatForecast.bind(this);
     this.sendHttpRequest = this.sendHttpRequest.bind(this);
+    this.filterHours = this.filterHours.bind(this);
     this.state = {
       error: undefined,
       location:{
@@ -18,6 +19,8 @@ class App extends Component {
         forecasts: []
       }   
     };
+    this.timer = null;
+    this.errorMessages = ["Not a valid zipcode", "No data available"];
   }
   
   //send http request to the server when user enters the zipcode
@@ -27,57 +30,75 @@ class App extends Component {
     this.sendHttpRequest(zipcode);
   }
 
+  //send request upon keyup pause for 500ms
+  handleKeyUp(e) {
+    e.persist();
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => {
+      let zipcode = e.target.value.trim();
+      if(/^\d+$/.test(zipcode) && zipcode.length === 5) {
+        this.sendHttpRequest(zipcode);
+      } else if(zipcode.length >= 5){
+        console.log("not a valid zipcode");
+        this.setState({
+            error: this.errorMessages[0],
+            location: null
+        })
+      }else {
+        this.setState({
+          error: null,
+          location: null
+      })
+      }
+    }, 500);
+  }
+
   sendHttpRequest(zipcode) {
     const url = 'http://api.openweathermap.org/data/2.5/forecast';
     axios.get(`${url}?zip=${zipcode}&units=imperial&appid=5ab0e54f94cd4b682ebe2cdb1675cc56`)
     .then((response) =>{
-      let obj = this.handleResponse(response);
-      let location = {
-        zipcode: undefined,
-        city: undefined,
-        forecasts: []
-      }
-      location.zipcode = zipcode;
-      location.city = obj.city;
-      location.forecasts = obj.forecasts;
-
-      this.setState({
-        location,
-        error: null
-      });
+      if (response.status === 200 ) {
+        if (response.data) {
+          let data = response.data;   
+          let forecasts = 
+            data.list.filter(entry =>{
+            let hour = new Date(entry.dt*1000).getHours();
+            return (hour<=21 && hour>=8);       
+          })
+          .map(forecast => this.formatForecast(forecast));
+  
+          let location = {
+            zipcode: zipcode,
+            city: data.city.name,
+            forecasts
+          }
+          this.setState({
+            location,
+            error: null
+          });
+        } else {
+            this.setState({
+            error: this.errorMessages[1],
+            location: null
+            });
+        }
+      }  
     })
     .catch((error) =>{
       console.log(error);
       this.setState({
-        error: "Not a valid zipcode. Please enter a valid zipcode",
+        error: this.errorMessages[0],
         location: null
       })
     });
   }
 
-// handle the case when response status is 200, filter time between 8am to 9pm
-  handleResponse(response) {
-    if (response.status === 200 ) {
-      if (response.data) {
-        let data = response.data;   
-        let forecasts = data.list.filter(entry =>{
-          let hour = new Date(entry.dt*1000).getHours();
-          return (hour<=21 && hour>=8);       
-        })
-        .map(forecast => this.formatForecast(forecast));
-
-        return {
-          city: data.city.name,
-          forecasts
-        }
-       
-      } else {
-        this.setState({
-          error: "No forecast available",
-          location: null
-        })
-      }
-    }
+//  filter time between 8am to 9pm
+  filterHours(list) {
+    let hours = list.filter(entry =>{
+      let hour = new Date(entry.dt*1000).getHours();
+      return (hour<=21 && hour>=8);      
+    });
   }
 
   //format weather forecast time and temperature. time format: Saturday 4/14, 8AM, temperature: Fahrenheit 
@@ -98,7 +119,7 @@ class App extends Component {
       <div className="App">
         <h2 className="app-title">Enter zipcode for weather forecast!</h2>
         <form onSubmit={this.handleSubmit}>
-          <input type="text" name="zipcode" placeholder="zipcode" className="zipcode"></input>
+          <input onKeyUp={this.handleKeyUp} type="text" name="zipcode" placeholder="zipcode" className="zipcode"></input>
         </form>
         {this.state.location && 
           <div>

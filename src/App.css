@@ -25,7 +25,7 @@ form {
 }
 .temp-list {
   width: 70%;
-  margin: 0 auto; 
+  margin: 1em auto 4em auto; 
 }
 .list-item {
   margin: 5px auto;
