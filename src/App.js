@@ -9,6 +9,7 @@ class App extends Component {
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleResponse = this.handleResponse.bind(this);
     this.formatForecast = this.formatForecast.bind(this);
+    this.sendHttpRequest = this.sendHttpRequest.bind(this);
     this.state = {
       error: undefined,
       location:{
@@ -22,19 +23,24 @@ class App extends Component {
   //send http request to the server when user enters the zipcode
   handleSubmit(e) {
     e.preventDefault();
-    let location = {
-      zipcode: undefined,
-      city: undefined,
-      forecasts: []
-    }
     const zipcode = e.target.elements.zipcode.value.trim();
-    location.zipcode = zipcode;
+    this.sendHttpRequest(zipcode);
+  }
+
+  sendHttpRequest(zipcode) {
     const url = 'http://api.openweathermap.org/data/2.5/forecast';
     axios.get(`${url}?zip=${zipcode}&units=imperial&appid=5ab0e54f94cd4b682ebe2cdb1675cc56`)
     .then((response) =>{
       let obj = this.handleResponse(response);
+      let location = {
+        zipcode: undefined,
+        city: undefined,
+        forecasts: []
+      }
+      location.zipcode = zipcode;
       location.city = obj.city;
       location.forecasts = obj.forecasts;
+
       this.setState({
         location,
         error: null
@@ -48,8 +54,8 @@ class App extends Component {
       })
     });
   }
-  
-// handle the case when response status is 200
+
+// handle the case when response status is 200, filter time between 8am to 9pm
   handleResponse(response) {
     if (response.status === 200 ) {
       if (response.data) {
