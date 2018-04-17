@@ -1,11 +1,16 @@
 import React from 'react';
-import Forecast from './Forecast';
+import Days from './Days';
+
 const Forecasts = (props) => {
    return (
      <div className="temp-list">
      {props.forecasts && 
-      props.forecasts.map((forecast) => (
-        <Forecast key={forecast.time} time={forecast.time} temperature={forecast.temperature} />
+      props.forecasts.map((day, index) => (
+        <Days 
+          key = {index} 
+          day = {day[0].day} 
+          forecasts = {day}
+         />
       ))
     }
      </div>

@@ -10,7 +10,7 @@ class App extends Component {
     this.handleKeyUp = this.handleKeyUp.bind(this);
     this.formatForecast = this.formatForecast.bind(this);
     this.sendHttpRequest = this.sendHttpRequest.bind(this);
-    this.filterHours = this.filterHours.bind(this);
+    this.groupByDay = this.groupByDay.bind(this);
     this.state = {
       error: undefined,
       location:{
@@ -58,18 +58,18 @@ class App extends Component {
     axios.get(`${url}?zip=${zipcode}&units=imperial&appid=5ab0e54f94cd4b682ebe2cdb1675cc56`)
     .then((response) =>{
       if (response.status === 200 ) {
-        if (response.data) {
-          let data = response.data;   
-          let forecasts = 
-            data.list.filter(entry =>{
+        if (response.data) { 
+          //get hours between 8am and 9pm
+          let forecasts = response.data.list.filter(entry =>{
             let hour = new Date(entry.dt*1000).getHours();
             return (hour<=21 && hour>=8);       
           })
-          .map(forecast => this.formatForecast(forecast));
+          .map(forecast => this.formatForecast(forecast))
+          forecasts = this.groupByDay(forecasts);
   
           let location = {
             zipcode: zipcode,
-            city: data.city.name,
+            city: response.data.city.name,
             forecasts
           }
           this.setState({
@@ -93,33 +93,47 @@ class App extends Component {
     });
   }
 
-//  filter time between 8am to 9pm
-  filterHours(list) {
-    let hours = list.filter(entry =>{
-      let hour = new Date(entry.dt*1000).getHours();
-      return (hour<=21 && hour>=8);      
-    });
-  }
-
   //format weather forecast time and temperature. time format: Saturday 4/14, 8AM, temperature: Fahrenheit 
   formatForecast(forecast) {
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const date = new Date(forecast.dt*1000);
     const hour = date.getHours() - 12 > 0 ? date.getHours() - 12 + 'PM' : date.getHours() + 'AM';
-    const timeFormatted = `${days[date.getDay()]} ${date.getMonth()+1}/${date.getDate()}, ${hour} `;
+    const day = `${days[date.getDay()]} ${date.getMonth()+1}/${date.getDate()} `;
     
     const temperature = Math.floor(forecast.main.temp) + 'F';
+
     return {
-      time: timeFormatted,
+      day,
+      hour,
       temperature
     };
+  }
+
+  groupByDay(forecasts) {
+    let last = forecasts[0];
+    let result = [];
+    let group = []; 
+    group.push(last);
+    for(let i=1; i<forecasts.length; i++) {
+      
+      if(last.day === forecasts[i].day){
+        group.push(forecasts[i]);
+        
+      } else {
+        result.push(group);
+        group = [];
+        group.push(forecasts[i]);
+      }
+      last = forecasts[i];
+    }
+    return result;
   }
   render() {
     return (
       <div className="App">
         <h2 className="app-title">Enter zipcode for weather forecast!</h2>
         <form onSubmit={this.handleSubmit}>
-          <input onKeyUp={this.handleKeyUp} type="text" name="zipcode" placeholder="zipcode" className="zipcode"></input>
+          <input onKeyUp={this.handleKeyUp} type="text" name="zipcode" placeholder="e.g., 94040" className="zipcode"></input>
         </form>
         {this.state.location && 
           <div>

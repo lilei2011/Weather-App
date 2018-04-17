@@ -27,6 +27,13 @@ form {
   width: 70%;
   margin: 1em auto 4em auto; 
 }
+.group {
+
+}
+.group-title {
+  font-size: 1.2em;
+    margin: 0.8em;
+}
 .list-item {
   margin: 5px auto;
   display: flex;
